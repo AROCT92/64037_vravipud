@@ -1,0 +1,132 @@
+---
+title: "Assignemnt-2"
+author: "Avinash Ravipudi"
+date: "2023-03-23"
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(ISLR)
+library(dplyr)
+library(glmnet)
+library(caret)
+
+# filter the required attributes
+Carseats_Filtered <- Carseats %>% 
+                     select("Sales", "Price", "Advertising", "Population", "Age", "Income", "Education")
+
+```
+QB1) Build a decision tree regression model to predict Sales based on all other attributes ("Price", "Advertising", "Population", "Age", "Income" and "Education"). Which attribute is used at the top of the tree (the root node) for splitting? Hint: you can either plot () and text() functions or use the summary() function to see the decision tree rules.
+```{r}
+library(rpart)
+# build decision tree regression model
+Carseats_Tree <- rpart(Sales ~ Price + Advertising + Population + Age + Income + Education, data = Carseats_Filtered, method = "anova")
+
+# print the summary of the decision tree
+summary(Carseats_Tree)
+
+```
+```{r}
+library(rpart.plot)
+# plot decision tree
+rpart.plot(Carseats_Tree, type = 3, extra = 101, cex = 0.8, box.col = "grey", branch.lwd = 2, digits = 3)
+
+```
+QB2) Consider the following input:
+• Sales=9
+• Price=6.54
+• Population=124
+• Advertising=0
+• Age=76
+• Income= 110
+• Education=10
+What will be the estimated Sales for this record using the decision tree model? 
+
+```{r}
+# create a data frame with the input record
+input <- data.frame(Price = 6.54, Advertising = 0, Population = 124, Age = 76, Income = 110, Education = 10)
+
+# predict the Sales using the decision tree model
+predicted_sales <- predict(Carseats_Tree, newdata = input)
+
+# print the predicted Sales
+predicted_sales
+
+```
+Estimated sales for this record is 9.59
+
+QB3) Use the caret function to train a random forest (method=’rf’) for the same dataset. Use the
+caret default settings. By default, caret will examine the “mtry” values of 2,4, and 6. Recall that
+mtry is the number of attributes available for splitting at each splitting node.
+Which mtry value gives the best performance?
+(Make sure to set the random number generator seed to 123) 
+
+```{r}
+# set the seed for reproducibility
+set.seed(123)
+
+# define the train control
+train_control <- trainControl(method = "cv", number = 5)
+
+# train the random forest model
+Carseats_RandomForest <- train(Sales ~ Price + Advertising + Population + Age + Income + Education, data = Carseats_Filtered, method = "rf", trControl = train_control)
+
+# print the results
+Carseats_RandomForest
+
+```
+```{r}
+# plot the results
+plot(Carseats_RandomForest)
+
+```
+The Mtr value at 4 gives the best performanace
+
+QB4) Customize the search grid by checking the model’s performance for mtry values of 2, 3 and
+5 using 3 repeats of 5-fold cross validation. 
+```{r}
+# define the search grid
+mtry_grid <- expand.grid(mtry = c(2, 3, 5))
+
+# define the train control with 3 repeats of 5-fold cross validation
+train_control <- trainControl(method = "repeatedcv", repeats = 3, number = 5)
+
+# train the random forest model with the customized search grid
+Carseats_RandomForest <- train(Sales ~ Price + Advertising + Population + Age + Income + Education, 
+                               data = Carseats_Filtered, 
+                               method = "rf", 
+                               trControl = train_control, 
+                               tuneLength = 3, 
+                               tuneGrid = mtry_grid)
+
+# print the results
+Carseats_RandomForest
+
+
+
+```
+
+```{r}
+library(ggplot2)
+
+# extract the results from the train object
+results <- as.data.frame(Carseats_RandomForest$results)
+
+# create a line plot of RMSE as a function of mtry
+ggplot(results, aes(x = mtry, y = RMSE)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "mtry", y = "RMSE") +
+  theme_minimal()
+
+```
+mtry values of 2, 3 and 5 using 3 repeats of 5-fold cross validation is at 3
+
